@@ -242,12 +242,12 @@ def get_suitability_category(score):
 
 @app.route("/api/asteroids")
 def get_asteroids():
-    # Example: fetch a specific asteroid by ID
-    asteroid_id = "3542519"  # you can make this dynamic later
+    asteroid_id = request.args.get("neo_id", "3542519")  
     url = f"{NASA_BASE_URL}{asteroid_id}?api_key={NASA_API_KEY}"
     response = requests.get(url)
     data = response.json()
     return jsonify(data)
+
 
 # @app.route('/')
 # def index():
