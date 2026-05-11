@@ -252,261 +252,256 @@ def get_asteroids():
     return jsonify(response.json())
 
 
+@app.route('/')
+def index():
+    """Render the main page"""
+    return render_template('index.html')
+
+@app.route('/analyze', methods=['POST'])
+def analyze_asteroid():
+    """Analyze asteroid for mining suitability"""
+    try:
+        asteroid_id = request.form.get('asteroid_id', '').strip()
+        
+        if not asteroid_id:
+            return jsonify({'success': False, 'error': 'Please enter an asteroid ID or name'})
+        
+        logger.info(f'Analyzing asteroid: {asteroid_id}')
+        rotation_info = get_rotation_period(asteroid_id)
+        url = f'{NASA_BASE_URL}{asteroid_id}'
+        params = {'api_key': NASA_API_KEY}
+        logger.info(f'Calling NASA API: {url}')
+        response = requests.get(url, params=params, timeout=10)
+        logger.info(f'NASA API response status: {response.status_code}')
+        
+        if response.status_code != 200:
+            logger.warning(f'NASA API error {response.status_code}: {response.text}')
+            return create_demo_analysis(asteroid_id, rotation_info)
+        
+        data = response.json()
+        
+        asteroid_info = {
+            'id': data.get('id', asteroid_id),
+            'name': data.get('name', f'Asteroid {asteroid_id}'),
+            'nasa_jpl_url': data.get('nasa_jpl_url', '#'),
+            'absolute_magnitude': data.get('absolute_magnitude_h', 'Unknown'),
+            'is_hazardous': data.get('is_potentially_hazardous_asteroid', False),
+            'estimated_diameter': data.get('estimated_diameter', {}),
+            'close_approach_data': data.get('close_approach_data', [{}])[0] if data.get('close_approach_data') else {},
+            'orbital_data': data.get('orbital_data', {})
+        }
+        
+        logger.info(f'Asteroid info extracted: {asteroid_info["name"]}')
+        asteroid_type = determine_asteroid_type(asteroid_info)
+        type_info = ASTEROID_TYPES.get(asteroid_type, ASTEROID_TYPES['C-type'])
+        scores = calculate_suitability_score(asteroid_info, rotation_info)
+        category = get_suitability_category(scores['total'])
+        estimated_value = estimate_asteroid_value(type_info['minerals'], asteroid_info)
+        
+        analysis = {
+            'asteroid_type': asteroid_type,
+            'type_description': type_info['description'],
+            'type_color': type_info['color'],
+            'mineral_composition': type_info['minerals'],
+            'suitability_score': scores['total'],
+            'suitability_category': category,
+            'component_scores': scores['components'],
+            'estimated_value_billion': round(estimated_value, 2),
+            'mining_difficulty': get_mining_difficulty(scores['total']),
+            'recommended_approach': get_mining_approach(asteroid_type, scores['components']['size']),
+            'rotation_period_hours': rotation_info.get('period_hours'),
+            'rotation_data_source': scores.get('rotation_data_source', 'simulated')
+        }
+        
+        logger.info(f'Analysis complete for {asteroid_info["name"]}: score={scores["total"]}')
+        
+        return jsonify({
+            'success': True,
+            'asteroid': asteroid_info,
+            'analysis': analysis
+        })
+        
+    except requests.exceptions.Timeout:
+        logger.error(f'NASA API timeout for {asteroid_id}')
+        return jsonify({'success': False, 'error': 'NASA API timeout. Using demo data instead.'})
+    except requests.exceptions.RequestException as e:
+        logger.error(f'Request error: {str(e)}')
+        return jsonify({'success': False, 'error': f'Network error: {str(e)}'})
+    except Exception as e:
+        logger.error(f'Error analyzing asteroid: {str(e)}', exc_info=True)
+        return jsonify({'success': False, 'error': f'Error analyzing asteroid: {str(e)}'})
 
 
-# @app.route('/')
-# def index():
-#     """Render the main page"""
-#     return render_template('index.html')
-
-# @app.route('/analyze', methods=['POST'])
-# def analyze_asteroid():
-#     """Analyze asteroid for mining suitability"""
-#     try:
-#         asteroid_id = request.form.get('asteroid_id', '').strip()
-        
-#         if not asteroid_id:
-#             return jsonify({'success': False, 'error': 'Please enter an asteroid ID or name'})
-        
-#         logger.info(f'Analyzing asteroid: {asteroid_id}')
-#         rotation_info = get_rotation_period(asteroid_id)
-#         url = f'{NASA_BASE_URL}{asteroid_id}'
-#         params = {'api_key': NASA_API_KEY}
-#         logger.info(f'Calling NASA API: {url}')
-#         response = requests.get(url, params=params, timeout=10)
-#         logger.info(f'NASA API response status: {response.status_code}')
-        
-#         if response.status_code != 200:
-#             logger.warning(f'NASA API error {response.status_code}: {response.text}')
-#             return create_demo_analysis(asteroid_id, rotation_info)
-        
-#         data = response.json()
-        
-#         asteroid_info = {
-#             'id': data.get('id', asteroid_id),
-#             'name': data.get('name', f'Asteroid {asteroid_id}'),
-#             'nasa_jpl_url': data.get('nasa_jpl_url', '#'),
-#             'absolute_magnitude': data.get('absolute_magnitude_h', 'Unknown'),
-#             'is_hazardous': data.get('is_potentially_hazardous_asteroid', False),
-#             'estimated_diameter': data.get('estimated_diameter', {}),
-#             'close_approach_data': data.get('close_approach_data', [{}])[0] if data.get('close_approach_data') else {},
-#             'orbital_data': data.get('orbital_data', {})
-#         }
-        
-#         logger.info(f'Asteroid info extracted: {asteroid_info["name"]}')
-#         asteroid_type = determine_asteroid_type(asteroid_info)
-#         type_info = ASTEROID_TYPES.get(asteroid_type, ASTEROID_TYPES['C-type'])
-#         scores = calculate_suitability_score(asteroid_info, rotation_info)
-#         category = get_suitability_category(scores['total'])
-#         estimated_value = estimate_asteroid_value(type_info['minerals'], asteroid_info)
-        
-#         analysis = {
-#             'asteroid_type': asteroid_type,
-#             'type_description': type_info['description'],
-#             'type_color': type_info['color'],
-#             'mineral_composition': type_info['minerals'],
-#             'suitability_score': scores['total'],
-#             'suitability_category': category,
-#             'component_scores': scores['components'],
-#             'estimated_value_billion': round(estimated_value, 2),
-#             'mining_difficulty': get_mining_difficulty(scores['total']),
-#             'recommended_approach': get_mining_approach(asteroid_type, scores['components']['size']),
-#             'rotation_period_hours': rotation_info.get('period_hours'),
-#             'rotation_data_source': scores.get('rotation_data_source', 'simulated')
-#         }
-        
-#         logger.info(f'Analysis complete for {asteroid_info["name"]}: score={scores["total"]}')
-        
-#         return jsonify({
-#             'success': True,
-#             'asteroid': asteroid_info,
-#             'analysis': analysis
-#         })
-        
-#     except requests.exceptions.Timeout:
-#         logger.error(f'NASA API timeout for {asteroid_id}')
-#         return jsonify({'success': False, 'error': 'NASA API timeout. Using demo data instead.'})
-#     except requests.exceptions.RequestException as e:
-#         logger.error(f'Request error: {str(e)}')
-#         return jsonify({'success': False, 'error': f'Network error: {str(e)}'})
-#     except Exception as e:
-#         logger.error(f'Error analyzing asteroid: {str(e)}', exc_info=True)
-#         return jsonify({'success': False, 'error': f'Error analyzing asteroid: {str(e)}'})
-
-
-# def create_demo_analysis(asteroid_id, rotation_info=None):
-#     """Create a demo analysis when NASA API fails"""
-#     asteroid_type = random.choices(
-#         ['C-type', 'S-type', 'M-type'],
-#         weights=[0.75, 0.17, 0.08]
-#     )[0]
+def create_demo_analysis(asteroid_id, rotation_info=None):
+    """Create a demo analysis when NASA API fails"""
+    asteroid_type = random.choices(
+        ['C-type', 'S-type', 'M-type'],
+        weights=[0.75, 0.17, 0.08]
+    )[0]
     
-#     type_info = ASTEROID_TYPES[asteroid_type]
+    type_info = ASTEROID_TYPES[asteroid_type]
     
-#     asteroid_info = {
-#         'id': asteroid_id,
-#         'name': f'Demo Asteroid {asteroid_id}',
-#         'nasa_jpl_url': 'https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html',
-#         'absolute_magnitude': round(random.uniform(15, 22), 2),
-#         'is_hazardous': random.choice([True, False]),
-#         'estimated_diameter': {
-#             'kilometers': {
-#                 'estimated_diameter_min': round(random.uniform(0.1, 5.0), 2),
-#                 'estimated_diameter_max': round(random.uniform(0.5, 10.0), 2)
-#             }
-#         }
-#     }
+    asteroid_info = {
+        'id': asteroid_id,
+        'name': f'Demo Asteroid {asteroid_id}',
+        'nasa_jpl_url': 'https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html',
+        'absolute_magnitude': round(random.uniform(15, 22), 2),
+        'is_hazardous': random.choice([True, False]),
+        'estimated_diameter': {
+            'kilometers': {
+                'estimated_diameter_min': round(random.uniform(0.1, 5.0), 2),
+                'estimated_diameter_max': round(random.uniform(0.5, 10.0), 2)
+            }
+        }
+    }
     
-#     scores = calculate_suitability_score(asteroid_info, rotation_info)
-#     scores['total'] = round(scores['total'], 2)
+    scores = calculate_suitability_score(asteroid_info, rotation_info)
+    scores['total'] = round(scores['total'], 2)
 
-#     category = get_suitability_category(scores['total'])
-#     estimated_value = estimate_asteroid_value(type_info['minerals'], asteroid_info)
+    category = get_suitability_category(scores['total'])
+    estimated_value = estimate_asteroid_value(type_info['minerals'], asteroid_info)
     
-#     analysis = {
-#         'asteroid_type': asteroid_type,
-#         'type_description': type_info['description'],
-#         'type_color': type_info['color'],
-#         'mineral_composition': type_info['minerals'],
-#         'suitability_score': scores['total'],
-#         'suitability_category': category,
-#         'component_scores': {k: round(v, 2) for k, v in scores['components'].items()},
-#         'estimated_value_billion': round(estimated_value, 2),
-#         'mining_difficulty': get_mining_difficulty(scores['total']),
-#         'recommended_approach': get_mining_approach(asteroid_type, scores['components']['size']),
-#         'rotation_period_hours': rotation_info.get('period_hours') if rotation_info else None,
-#         'rotation_data_source': scores.get('rotation_data_source', 'simulated')
-#     }
+    analysis = {
+        'asteroid_type': asteroid_type,
+        'type_description': type_info['description'],
+        'type_color': type_info['color'],
+        'mineral_composition': type_info['minerals'],
+        'suitability_score': scores['total'],
+        'suitability_category': category,
+        'component_scores': {k: round(v, 2) for k, v in scores['components'].items()},
+        'estimated_value_billion': round(estimated_value, 2),
+        'mining_difficulty': get_mining_difficulty(scores['total']),
+        'recommended_approach': get_mining_approach(asteroid_type, scores['components']['size']),
+        'rotation_period_hours': rotation_info.get('period_hours') if rotation_info else None,
+        'rotation_data_source': scores.get('rotation_data_source', 'simulated')
+    }
     
-#     return jsonify({
-#         'success': True,
-#         'asteroid': asteroid_info,
-#         'analysis': analysis,
-#         'demo': True
-#     })
+    return jsonify({
+        'success': True,
+        'asteroid': asteroid_info,
+        'analysis': analysis,
+        'demo': True
+    })
 
 
-# def estimate_asteroid_value(minerals, asteroid_data):
-#     """Estimate asteroid value in billions USD"""
-#     try:
-#         mineral_prices = {
-#             'Nickel-Iron': 2.5,
-#             'Platinum Group': 30000,
-#             'Gold': 60000,
-#             'Water Ice': 0.5,
-#             'Rare Earth Elements': 100,
-#             'Cobalt': 33,
-#             'Copper': 9,
-#             'Silicon': 2,
-#             'Carbon Compounds': 1,
-#             'Magnesium Silicates': 0.5,
-#             'Iridium': 160000,
-#             'Palladium': 60000,
-#             'Silicate Minerals': 0.3
-#         }
+def estimate_asteroid_value(minerals, asteroid_data):
+    """Estimate asteroid value in billions USD"""
+    try:
+        mineral_prices = {
+            'Nickel-Iron': 2.5,
+            'Platinum Group': 30000,
+            'Gold': 60000,
+            'Water Ice': 0.5,
+            'Rare Earth Elements': 100,
+            'Cobalt': 33,
+            'Copper': 9,
+            'Silicon': 2,
+            'Carbon Compounds': 1,
+            'Magnesium Silicates': 0.5,
+            'Iridium': 160000,
+            'Palladium': 60000,
+            'Silicate Minerals': 0.3
+        }
         
-#         diameter_data = asteroid_data.get('estimated_diameter', {}).get('kilometers', {})
-#         if diameter_data:
-#             avg_diameter = (
-#                 diameter_data.get('estimated_diameter_min', 0.5) + 
-#                 diameter_data.get('estimated_diameter_max', 0.5)
-#             ) / 2
-#             volume_m3 = (4/3) * 3.14159 * ((avg_diameter * 500) ** 3)
-#             mass_kg = volume_m3 * 2000
-#         else:
-#             mass_kg = 1e12
+        diameter_data = asteroid_data.get('estimated_diameter', {}).get('kilometers', {})
+        if diameter_data:
+            avg_diameter = (
+                diameter_data.get('estimated_diameter_min', 0.5) + 
+                diameter_data.get('estimated_diameter_max', 0.5)
+            ) / 2
+            volume_m3 = (4/3) * 3.14159 * ((avg_diameter * 500) ** 3)
+            mass_kg = volume_m3 * 2000
+        else:
+            mass_kg = 1e12
         
-#         total_value = 0
-#         for mineral, fraction in minerals.items():
-#             if mineral in mineral_prices:
-#                 mineral_mass = mass_kg * fraction
-#                 total_value += mineral_mass * mineral_prices[mineral]
+        total_value = 0
+        for mineral, fraction in minerals.items():
+            if mineral in mineral_prices:
+                mineral_mass = mass_kg * fraction
+                total_value += mineral_mass * mineral_prices[mineral]
         
-#         return total_value / 1e9
+        return total_value / 1e9
         
-#     except:
-#         return random.uniform(1, 100)
+    except:
+        return random.uniform(1, 100)
 
 
-# def get_mining_difficulty(score):
-#     if score >= 75:
-#         return 'Low'
-#     elif score >= 50:
-#         return 'Moderate'
-#     elif score >= 30:
-#         return 'High'
-#     else:
-#         return 'Very High'
+def get_mining_difficulty(score):
+    if score >= 75:
+        return 'Low'
+    elif score >= 50:
+        return 'Moderate'
+    elif score >= 30:
+        return 'High'
+    else:
+        return 'Very High'
 
 
-# def get_mining_approach(asteroid_type, size_score):
-#     approaches = {
-#         'M-type': [
-#             'Surface mining with magnetic separation',
-#             'Robotic drilling and extraction',
-#             'Capture and process in lunar orbit'
-#         ],
-#         'S-type': [
-#             'Drill-based extraction with on-site processing',
-#             'Selective surface mining',
-#             'Crushing and separation techniques'
-#         ],
-#         'C-type': [
-#             'Water extraction and in-situ resource utilization',
-#             'Heating for volatile extraction',
-#             'Chemical processing for carbon compounds'
-#         ]
-#     }
-#     approach_list = approaches.get(asteroid_type, approaches['C-type'])
-#     return random.choice(approach_list)
+def get_mining_approach(asteroid_type, size_score):
+    approaches = {
+        'M-type': [
+            'Surface mining with magnetic separation',
+            'Robotic drilling and extraction',
+            'Capture and process in lunar orbit'
+        ],
+        'S-type': [
+            'Drill-based extraction with on-site processing',
+            'Selective surface mining',
+            'Crushing and separation techniques'
+        ],
+        'C-type': [
+            'Water extraction and in-situ resource utilization',
+            'Heating for volatile extraction',
+            'Chemical processing for carbon compounds'
+        ]
+    }
+    approach_list = approaches.get(asteroid_type, approaches['C-type'])
+    return random.choice(approach_list)
 
 
-# @app.route('/discover')
-# def discover_asteroids():
-#     """Discover potentially mineable asteroids"""
-#     try:
-#         logger.info('Discovering asteroids')
+@app.route('/discover')
+def discover_asteroids():
+    """Discover potentially mineable asteroids"""
+    try:
+        logger.info('Discovering asteroids')
         
-#         asteroids = []
-#         asteroid_names = [
-#             "Ceres", "Vesta", "Pallas", "Hygiea", "Interamnia",
-#             "Davida", "Cybele", "Europa", "Sylvia", "Hektor",
-#             "Juno", "Eunomia", "Psyche", "Thisbe", "Amphitrite"
-#         ]
+        asteroids = []
+        asteroid_names = [
+            "Ceres", "Vesta", "Pallas", "Hygiea", "Interamnia",
+            "Davida", "Cybele", "Europa", "Sylvia", "Hektor",
+            "Juno", "Eunomia", "Psyche", "Thisbe", "Amphitrite"
+        ]
         
-#         for i in range(10):
-#             asteroid_type = random.choices(
-#                 ['C-type', 'S-type', 'M-type'],
-#                 weights=[0.75, 0.17, 0.08]
-#             )[0]
+        for i in range(10):
+            asteroid_type = random.choices(
+                ['C-type', 'S-type', 'M-type'],
+                weights=[0.75, 0.17, 0.08]
+            )[0]
             
-#             type_info = ASTEROID_TYPES[asteroid_type]
-#             score = random.uniform(40, 90)
-#             category = get_suitability_category(score)
+            type_info = ASTEROID_TYPES[asteroid_type]
+            score = random.uniform(40, 90)
+            category = get_suitability_category(score)
             
-#             asteroids.append({
-#                 'id': f'2000{i}',
-#                 'name': f'({2000 + i}) {random.choice(asteroid_names)}',
-#                 'type': asteroid_type,
-#                 'type_color': type_info['color'],
-#                 'suitability_score': round(score, 2),
-#                 'category': category,
-#                 'diameter_km': round(random.uniform(0.5, 5.0), 2),
-#                 'top_minerals': list(type_info['minerals'].keys())[:2]
-#             })
+            asteroids.append({
+                'id': f'2000{i}',
+                'name': f'({2000 + i}) {random.choice(asteroid_names)}',
+                'type': asteroid_type,
+                'type_color': type_info['color'],
+                'suitability_score': round(score, 2),
+                'category': category,
+                'diameter_km': round(random.uniform(0.5, 5.0), 2),
+                'top_minerals': list(type_info['minerals'].keys())[:2]
+            })
         
-#         asteroids.sort(key=lambda x: x['suitability_score'], reverse=True)
-#         logger.info(f'Generated {len(asteroids)} asteroids')
+        asteroids.sort(key=lambda x: x['suitability_score'], reverse=True)
+        logger.info(f'Generated {len(asteroids)} asteroids')
         
-#         return jsonify({'success': True, 'asteroids': asteroids})
+        return jsonify({'success': True, 'asteroids': asteroids})
         
-#     except Exception as e:
-#         logger.error(f'Error discovering asteroids: {str(e)}', exc_info=True)
-#         return jsonify({'success': False, 'error': f'Error discovering asteroids: {str(e)}'})
+    except Exception as e:
+        logger.error(f'Error discovering asteroids: {str(e)}', exc_info=True)
+        return jsonify({'success': False, 'error': f'Error discovering asteroids: {str(e)}'})
 
 
-#if __name__ == '__main__':
-    #app.run(debug=True, port=5000)
-
-
-
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
