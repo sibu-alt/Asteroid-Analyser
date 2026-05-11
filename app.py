@@ -242,11 +242,9 @@ def get_suitability_category(score):
     else:
         return {'name': 'Poor', 'color': 'danger', 'icon': 'fa-times-circle'}
 
-@app.route("/api/asteroids", methods=["GET", "POST"])
+@app.route("/api/asteroids", methods=["GET"])
 def get_asteroids():
     asteroid_id = request.args.get("neo_id")
-    if request.method == "POST":
-        asteroid_id = request.json.get("neo_id")
     url = f"{NASA_BASE_URL}{asteroid_id}?api_key={NASA_API_KEY}"
     response = requests.get(url)
     return jsonify(response.json())
@@ -257,11 +255,11 @@ def index():
     """Render the main page"""
     return render_template('index.html')
 
-@app.route('/analyze', methods=['POST'])
+@app.route('/analyze', methods=['GET'])
 def analyze_asteroid():
     """Analyze asteroid for mining suitability"""
     try:
-        asteroid_id = request.form.get('asteroid_id', '').strip()
+        asteroid_id = request.args.get('asteroid_id', '').strip()
         
         if not asteroid_id:
             return jsonify({'success': False, 'error': 'Please enter an asteroid ID or name'})
@@ -459,7 +457,7 @@ def get_mining_approach(asteroid_type, size_score):
     return random.choice(approach_list)
 
 
-@app.route('/discover')
+@app.route('/discover', methods=['GET'])
 def discover_asteroids():
     """Discover potentially mineable asteroids"""
     try:
