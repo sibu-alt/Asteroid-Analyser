@@ -240,9 +240,14 @@ def get_suitability_category(score):
     else:
         return {'name': 'Poor', 'color': 'danger', 'icon': 'fa-times-circle'}
 
-@app.route("/")
-def home():
-    return "Backend is live!"
+@app.route("/api/asteroids")
+def get_asteroids():
+    # Example: fetch a specific asteroid by ID
+    asteroid_id = "3542519"  # you can make this dynamic later
+    url = f"{NASA_BASE_URL}{asteroid_id}?api_key={NASA_API_KEY}"
+    response = requests.get(url)
+    data = response.json()
+    return jsonify(data)
 
 # @app.route('/')
 # def index():
