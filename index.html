@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroid Mining Suitability Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #0a0a0a; 
+            color: #e0e0e0;      
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .card {
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(255, 100, 0, 0.3); 
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 0 30px rgba(255, 100, 0, 0.6);
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6a00, #ff3c00);
+            color: #fff;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(255, 100, 0, 0.6);
+        }
+        .btn-primary:hover {
+            box-shadow: 0 0 20px rgba(255, 100, 0, 1);
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60 0%, #219a52 100%);
+            border: none;
+            border-radius: 50px;
+            padding: 10px 25px;
+        }
+        .progress {
+            height: 10px;
+            border-radius: 5px;
+        }
+        .asteroid-type-card {
+            border-left: 5px solid;
+            transition: all 0.3s;
+        }
+        .asteroid-type-card:hover {
+            transform: scale(1.02);
+        }
+        .mineral-badge {
+            margin: 2px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-meteor"></i> Asteroid Mining Analyzer
+            </a>
+            <span class="navbar-text">
+                NASA Data Powered
+            </span>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4><i class="fas fa-search"></i> Analyze Asteroid for Mining</h4>
+                    </div>
+                    <div class="card-body">
+                        <p class="lead">Enter an asteroid ID or name to analyze its mining suitability based on chemical composition, size, and proximity to Earth.</p>
+                        
+                        <form id="searchForm">
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" id="asteroidId" 
+                                       placeholder="Try: 3542519, 3726710, or 'Ceres'" required>
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="fas fa-chart-line"></i> Analyze
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="text-center my-4">
+                            <p class="text-muted">or</p>
+                            <button class="btn btn-success" id="discoverBtn">
+                                <i class="fas fa-compass"></i> Discover Mineable Asteroids
+                            </button>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h5><i class="fas fa-info-circle"></i> Analysis Criteria:</h5>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <strong>Distance (35%)</strong><br>
+                                    <small>Proximity to Earth</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Size (25%)</strong><br>
+                                    <small>Optimal: 0.5-2 km</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Composition (30%)</strong><br>
+                                    <small>Mineral value</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>Rotation (10%)</strong><br>
+                                    <small>Stability for mining</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-4 d-none" id="resultsCard">
+                    <div class="card-header bg-success text-white">
+                        <h4><i class="fas fa-chart-bar"></i> Analysis Results</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="loading" class="text-center d-none">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Analyzing asteroid data...</p>
+                        </div>
+                        <div id="resultsContent"></div>
+                    </div>
+                </div>
+                
+                <div class="card mt-4 d-none" id="discoverCard">
+                    <div class="card-header bg-warning text-dark">
+                        <h4><i class="fas fa-globe-americas"></i> Top Mineable Asteroids</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="discoverLoading" class="text-center d-none">
+                            <div class="spinner-border text-warning" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <div id="discoverContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="card asteroid-type-card border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <strong>C-type (75%)</strong>
+                    </div>
+                    <div class="card-body">
+                        <p>Carbonaceous asteroids rich in water, carbon compounds, and silicates. Ideal for water extraction and life support resources.</p>
+                        <div class="mt-2">
+                            <span class="badge bg-primary mineral-badge">Water Ice</span>
+                            <span class="badge bg-primary mineral-badge">Carbon</span>
+                            <span class="badge bg-primary mineral-badge">Silicates</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card asteroid-type-card border-success">
+                    <div class="card-header bg-success text-white">
+                        <strong>S-type (17%)</strong>
+                    </div>
+                    <div class="card-body">
+                        <p>Stony asteroids with significant nickel-iron and silicate minerals. Good source of construction materials and basic metals.</p>
+                        <div class="mt-2">
+                            <span class="badge bg-success mineral-badge">Nickel-Iron</span>
+                            <span class="badge bg-success mineral-badge">Silicon</span>
+                            <span class="badge bg-success mineral-badge">Copper</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card asteroid-type-card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <strong>M-type (8%)</strong>
+                    </div>
+                    <div class="card-body">
+                        <p>Metallic asteroids with high concentrations of nickel, iron, and precious metals. Most valuable for mining operations.</p>
+                        <div class="mt-2">
+                            <span class="badge bg-warning mineral-badge">Platinum Group</span>
+                            <span class="badge bg-warning mineral-badge">Gold</span>
+                            <span class="badge bg-warning mineral-badge">Iridium</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white mt-5 py-3">
+        <div class="container text-center">
+            <p class="mb-0">
+                <i class="fas fa-satellite"></i> Asteroid Mining Analyzer v1.0 | 
+                Uses NASA NEO API & NASA JPL SBDB for real asteroid data
+            </p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        document.getElementById('searchForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const asteroidId = document.getElementById('asteroidId').value;
+            const resultsCard = document.getElementById('resultsCard');
+            const loading = document.getElementById('loading');
+            const resultsContent = document.getElementById('resultsContent');
+            
+            resultsCard.classList.remove('d-none');
+            loading.classList.remove('d-none');
+            resultsContent.innerHTML = '';
+            
+            try {
+                const formData = new FormData();
+                formData.append('asteroid_id', asteroidId);
+                
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderAnalysis(data.asteroid, data.analysis, data.demo || false);
+                } else {
+                    resultsContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i> ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> Connection error. Please try again.
+                    </div>
+                `;
+            } finally {
+                loading.classList.add('d-none');
+            }
+        });
+        
+        document.getElementById('discoverBtn').addEventListener('click', async function() {
+            const discoverCard = document.getElementById('discoverCard');
+            const discoverLoading = document.getElementById('discoverLoading');
+            const discoverContent = document.getElementById('discoverContent');
+            
+            discoverCard.classList.remove('d-none');
+            discoverLoading.classList.remove('d-none');
+            discoverContent.innerHTML = '';
+            
+            try {
+                const response = await fetch('/discover');
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderDiscovery(data.asteroids);
+                } else {
+                    discoverContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i> ${data.error}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                discoverContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> Connection error.
+                    </div>
+                `;
+            } finally {
+                discoverLoading.classList.add('d-none');
+            }
+        });
+        
+        function renderAnalysis(asteroid, analysis, isDemo) {
+            const resultsContent = document.getElementById('resultsContent');
+            
+            let demoWarning = '';
+            if (isDemo) {
+                demoWarning = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle"></i> Using simulated data for demonstration.
+                        For real asteroid data, use a valid NASA NEO ID.
+                    </div>
+                `;
+            }
+            
+            // Prepare mineral data for chart
+            const mineralLabels = Object.keys(analysis.mineral_composition);
+            const mineralData = Object.values(analysis.mineral_composition).map(v => v * 100);
+            
+            resultsContent.innerHTML = `
+                ${demoWarning}
+                
+                <div class="row">
+                    <div class="col-md-8">
+                        <h3>${asteroid.name}</h3>
+                        <p class="text-muted">ID: ${asteroid.id} | 
+                        Magnitude: ${asteroid.absolute_magnitude} | 
+                        Hazardous: ${asteroid.is_hazardous ? 'Yes ⚠️' : 'No ✅'}</p>
+                        
+                        <div class="alert alert-${analysis.suitability_category.color}">
+                            <h4 class="alert-heading">
+                                <i class="fas ${analysis.suitability_category.icon}"></i>
+                                Mining Suitability: ${analysis.suitability_category.name}
+                                <span class="float-end">Score: ${analysis.suitability_score}/100</span>
+                            </h4>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <strong>Asteroid Properties</strong>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>Type:</strong> 
+                                            <span class="badge bg-${analysis.type_color}">${analysis.asteroid_type}</span>
+                                        </p>
+                                        <p><strong>Description:</strong> ${analysis.type_description}</p>
+                                        <p><strong>Estimated Value:</strong> $${analysis.estimated_value_billion} Billion USD</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <strong>Mining Recommendations</strong>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>Difficulty:</strong> ${analysis.mining_difficulty}</p>
+                                        <p><strong>Approach:</strong> ${analysis.recommended_approach}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <strong>Score Breakdown</strong>
+                            </div>
+                            <div class="card-body">
+                                ${Object.entries(analysis.component_scores).map(([key, score]) => `
+                                    <div class="mb-2">
+                                        <strong>${key.charAt(0).toUpperCase() + key.slice(1)}:</strong>
+                                        <div class="progress">
+                                            <div class="progress-bar bg-${getScoreColor(score)}" 
+                                                 style="width: ${score}%">${score}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <strong>Mineral Composition (%)</strong>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="mineralChart" height="150"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <strong>Key Minerals</strong>
+                            </div>
+                            <div class="card-body">
+                                ${Object.entries(analysis.mineral_composition).map(([mineral, percent]) => `
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>${mineral}</span>
+                                        <span class="badge bg-secondary">${(percent * 100).toFixed(1)}%</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Render mineral chart
+            renderMineralChart(mineralLabels, mineralData);
+        }
+        
+        function renderDiscovery(asteroids) {
+            const discoverContent = document.getElementById('discoverContent');
+            
+            if (asteroids.length === 0) {
+                discoverContent.innerHTML = '<div class="alert alert-info">No asteroids found.</div>';
+                return;
+            }
+            
+            let html = `
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Asteroid</th>
+                                <th>Type</th>
+                                <th>Score</th>
+                                <th>Size (km)</th>
+                                <th>Top Minerals</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            asteroids.forEach(asteroid => {
+                html += `
+                    <tr onclick="analyzeById('${asteroid.id}')" style="cursor: pointer;">
+                        <td><strong>${asteroid.name}</strong></td>
+                        <td><span class="badge bg-${asteroid.type_color}">${asteroid.type}</span></td>
+                        <td>
+                            <span class="badge bg-${asteroid.category.color}">
+                                ${asteroid.suitability_score}
+                            </span>
+                        </td>
+                        <td>${asteroid.diameter_km}</td>
+                        <td>
+                            <small>${asteroid.top_minerals.join(', ')}</small>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted"><small>Click on any asteroid to analyze it</small></p>
+            `;
+            
+            discoverContent.innerHTML = html;
+        }
+        
+        function analyzeById(id) {
+            document.getElementById('asteroidId').value = id;
+            document.getElementById('searchForm').dispatchEvent(new Event('submit'));
+            document.getElementById('discoverCard').classList.add('d-none');
+        }
+        
+        function getScoreColor(score) {
+            if (score >= 80) return 'success';
+            if (score >= 65) return 'primary';
+            if (score >= 50) return 'warning';
+            if (score >= 35) return 'orange';
+            return 'danger';
+        }
+        
+        function renderMineralChart(labels, data) {
+            const ctx = document.getElementById('mineralChart').getContext('2d');
+            
+            // Create colors based on values
+            const colors = data.map(value => {
+                if (value > 30) return 'rgba(255, 99, 132, 0.7)';
+                if (value > 15) return 'rgba(54, 162, 235, 0.7)';
+                if (value > 5) return 'rgba(255, 206, 86, 0.7)';
+                return 'rgba(75, 192, 192, 0.7)';
+            });
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Percentage',
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: colors.map(c => c.replace('0.7', '1')),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Percentage (%)'
+                            }
+                        }
+                    },
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
