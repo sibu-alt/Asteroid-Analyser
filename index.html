@@ -526,7 +526,11 @@
     <script>
   async function fetchAsteroidById(neoId) {
     try {
-      const response = await fetch(`https://asteroid-analyser.onrender.com/api/asteroids?neo_id=${neoId}`);
+      const response = await fetch(`https://asteroid-analyser.onrender.com/api/asteroids?neo_id=${neoId}`
+                                   {
+                                       method: "GET"
+                                   }
+        );
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
