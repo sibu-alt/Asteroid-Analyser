@@ -242,12 +242,15 @@ def get_suitability_category(score):
     else:
         return {'name': 'Poor', 'color': 'danger', 'icon': 'fa-times-circle'}
 
-@app.route("/analyze", methods=["POST"])
-def analyze():
-    asteroid_id = request.form.get("asteroid_id")
+@app.route("/api/asteroids", methods=["GET", "POST"])
+def get_asteroids():
+    asteroid_id = request.args.get("neo_id")
+    if request.method == "POST":
+        asteroid_id = request.json.get("neo_id")
     url = f"{NASA_BASE_URL}{asteroid_id}?api_key={NASA_API_KEY}"
     response = requests.get(url)
     return jsonify(response.json())
+
 
 
 
