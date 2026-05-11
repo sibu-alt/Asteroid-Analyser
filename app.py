@@ -240,12 +240,16 @@ def get_suitability_category(score):
     else:
         return {'name': 'Poor', 'color': 'danger', 'icon': 'fa-times-circle'}
 
-@app.route('/')
+@app.route("/")
+def home():
+    return "Backend is live!"
+
+"""@app.route('/')
 def index():
     """Render the main page"""
     return render_template('index.html')
 
-@app.route('/analyze', methods=['POST'])
+"""@app.route('/analyze', methods=['POST'])
 def analyze_asteroid():
     """Analyze asteroid for mining suitability"""
     try:
@@ -447,7 +451,7 @@ def get_mining_approach(asteroid_type, size_score):
     return random.choice(approach_list)
 
 
-@app.route('/discover')
+"""@app.route('/discover')
 def discover_asteroids():
     """Discover potentially mineable asteroids"""
     try:
@@ -488,7 +492,7 @@ def discover_asteroids():
         
     except Exception as e:
         logger.error(f'Error discovering asteroids: {str(e)}', exc_info=True)
-        return jsonify({'success': False, 'error': f'Error discovering asteroids: {str(e)}'})
+        return jsonify({'success': False, 'error': f'Error discovering asteroids: {str(e)}'})"""
 
 
 #if __name__ == '__main__':
