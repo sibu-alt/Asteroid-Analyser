@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 import requests
 import json
 from datetime import datetime, timedelta
@@ -6,6 +7,7 @@ import random
 import logging
 
 app = Flask(__name__)
+CORS(app)
 app.config['SECRET_KEY'] = 'asteroid-mining-analyzer-secret-key'
 
 logging.basicConfig(level=logging.DEBUG)
