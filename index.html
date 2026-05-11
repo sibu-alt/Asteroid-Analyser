@@ -524,9 +524,9 @@
     </script>
 </body>
     <script>
-  async function fetchAsteroids() {
+  async function fetchAsteroidById(neoId) {
     try {
-      const response = await fetch("https://asteroid-analyser.onrender.com/api/asteroids");
+      const response = await fetch(`https://asteroid-analyser.onrender.com/api/asteroids?neo_id=${neoId}`);
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
@@ -534,11 +534,11 @@
       console.log(data); 
       document.getElementById("output").textContent = JSON.stringify(data, null, 2);
     } catch (error) {
-      console.error("Error fetching asteroids:", error);
+      console.error("Error fetching asteroid:", error);
     }
   }
 
-  window.onload = fetchAsteroids;
+  window.onload = () => fetchAsteroidById("3542519");
 </script>
 
 <div id="output"></div>
