@@ -233,7 +233,7 @@
             resultsContent.innerHTML = '';
             
             try {
-                const response = await fetch(`/analyze?asteroid_id=${encodeURIComponent(asteroidId)}`, {
+                const response = await fetch(`https://asteroid-analyser.onrender.com/analyze?asteroid_id=${encodeURIComponent(asteroidId)}`, {
                     method: 'GET'
                 });
                 
@@ -269,7 +269,7 @@
             discoverContent.innerHTML = '';
             
             try {
-                const response = await fetch('/discover', {
+                const response = await fetch('https://asteroid-analyser.onrender.com/discover', {
                     method: 'GET'
                 });
                 const data = await response.json();
