@@ -255,11 +255,11 @@ def index():
     """Render the main page"""
     return render_template('index.html')
 
-@app.route('/analyze', methods=['GET'])
+@app.route('/analyze', methods=['POST'])
 def analyze_asteroid():
     """Analyze asteroid for mining suitability"""
     try:
-        asteroid_id = request.args.get('asteroid_id', '').strip()
+        asteroid_id = request.form.get('asteroid_id', '').strip()
         
         if not asteroid_id:
             return jsonify({'success': False, 'error': 'Please enter an asteroid ID or name'})
